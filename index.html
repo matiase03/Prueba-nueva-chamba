@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recetario de Masas</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4a3420">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Recetario">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <button class="dark-toggle" id="dark-toggle" onclick="toggleDarkMode()" title="Modo oscuro">🌙</button>
+  <h1>Recetario de <em>Masas</em></h1>
+  <p>Escribí la cantidad y la receta se ajusta sola</p>
+  <div class="decorline"></div>
+</header>
+
+<main>
+
+  <!-- ═══ SECCIÓN RECETAS ═══ -->
+  <div id="tab-recetas">
+    <div class="controls">
+      <div>
+        <label>¿Qué receta necesitás?</label>
+        <input type="search" id="recipeSearch" placeholder="Buscar receta..." oninput="filtrarRecetas(this.value)" autocomplete="off">
+        <select id="recipeSelect" onchange="render()" style="margin-top:0.5rem">
+          <option value="">— Elegí una receta —</option>
+        </select>
+      </div>
+      <div class="mult-row">
+        <div>
+          <label>Multiplicar por (ej: 1, 2.5, 10)</label>
+          <input type="number" id="multiplier" value="1" min="0.1" step="0.5" oninput="render()">
+        </div>
+        <div class="mult-preview" id="multDisplay">
+          <span>cantidad</span>
+          <span id="multNum">×1</span>
+        </div>
+      </div>
+      <div class="bollos-row" id="bollos-row" style="display:none">
+        <label>O ingresá los bollos que necesitás</label>
+        <input type="number" id="bollosInput" min="1" step="1" placeholder="Ej: 20" oninput="calcularPorBollos(this.value)">
+        <div class="bollos-hint" id="bollos-hint"></div>
+      </div>
+    </div>
+    <div id="output">
+      <div class="empty-state">
+        <div class="icon">🥐</div>
+        <p>Elegí una receta para empezar</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SECCIÓN CALCULADORA ═══ -->
+  <div id="tab-calculadora" style="display:none">
+    <div style="padding-top:1.5rem">
+
+      <!-- Panes simples -->
+      <div class="calc-section">
+        <div class="calc-section-title">Molde Avena</div>
+        <div class="calc-row">
+          <label>Panes necesarios<small>950 g · ~2 por masa (2095 g)</small></label>
+          <input type="number" min="0" value="0" oninput="calcSimple(this, 950, 2095, 'res-molde-avena')">
+        </div>
+        <div id="res-molde-avena"></div>
+      </div>
+
+      <div class="calc-section">
+        <div class="calc-section-title">Molde Integral</div>
+        <div class="calc-row">
+          <label>Panes necesarios<small>950 g · ~2 por masa (2095 g)</small></label>
+          <input type="number" min="0" value="0" oninput="calcSimple(this, 950, 2095, 'res-molde-integral')">
+        </div>
+        <div id="res-molde-integral"></div>
+      </div>
+
+      <div class="calc-section">
+        <div class="calc-section-title">Centeno</div>
+        <div class="calc-row">
+          <label>Panes necesarios<small>900 g · ~2 por masa (1990 g)</small></label>
+          <input type="number" min="0" value="0" oninput="calcSimple(this, 900, 1990, 'res-centeno')">
+        </div>
+        <div id="res-centeno"></div>
+      </div>
+
+      <div class="calc-section">
+        <div class="calc-section-title">Campo / Integral / Semilla / Nuez y Miel</div>
+        <div class="calc-row">
+          <label>Panes necesarios<small>800 g por bollo</small></label>
+          <input type="number" min="0" value="0" oninput="calcSimple(this, 800, 1760, 'res-campo')">
+        </div>
+        <div id="res-campo"></div>
+      </div>
+
+      <!-- Masa de Viena -->
+      <div class="calc-section">
+        <div class="calc-section-title">Masa de Viena</div>
+        <div class="calc-row">
+          <label>Vienas<small>90 g</small></label>
+          <input type="number" min="0" value="0" id="viena-viena" oninput="calcViena()">
+        </div>
+        <div class="calc-row">
+          <label>Hamburguesas<small>110 g</small></label>
+          <input type="number" min="0" value="0" id="viena-hamb" oninput="calcViena()">
+        </div>
+        <div class="calc-row">
+          <label>Paneras<small>60 g</small></label>
+          <input type="number" min="0" value="0" id="viena-panera" oninput="calcViena()">
+        </div>
+        <div id="res-viena"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ SECCIÓN PEDIDOS ═══ -->
+  <div id="tab-pedidos" style="display:none; padding-top:1.5rem">
+
+    <div class="nota disclaimer" style="margin-bottom:1.2rem">
+      <strong>⚠️ Alemana:</strong> De miércoles a domingo hay que hacer una alemana grande. De esa masa se separa 1/4 para Belgrano y el resto va para BV y Sur.
+    </div>
+
+    <div class="pedidos-selector controls" style="margin-bottom:1.2rem">
+      <label>Ver pedido de:</label>
+      <select id="localSelect" onchange="mostrarLocal(this.value)">
+        <option value="todos">— Todos los locales —</option>
+        <option value="totales">📊 Totales de producción</option>
+        <option value="bv">Local BV</option>
+        <option value="sur">Local Sur</option>
+        <option value="peatonal">Local Peatonal</option>
+        <option value="belgrano">Local Belgrano</option>
+        <option value="gralpaz">Local Gral Paz</option>
+        <option value="cocinabv">Local Cocina BV</option>
+      </select>
+    </div>
+
+    <div id="pedidos-output"></div>
+
+    <!-- Historial de entregas -->
+    <div id="pedidos-historial"></div>
+  </div>
+
+  <!-- ═══ SECCIÓN LECTOR DE MENSAJE ═══ -->
+  <div id="tab-mensaje" style="display:none; padding-top:1.5rem">
+    <div class="calc-section">
+      <div class="calc-section-title">Pegá el mensaje acá</div>
+      <textarea class="msg-textarea" id="msgInput" placeholder="Molde avena x9&#10;Campo x12&#10;Ciabatta x5&#10;..."></textarea>
+      <button class="msg-btn" onclick="leerMensaje()">Ver ingredientes</button>
+    </div>
+
+    <div id="msg-output" style="display:none">
+      <div class="hidra-tab-btns">
+        <button class="hidra-tab-btn active" id="btn-h1" onclick="mostrarHidra(1)">💧 Primera hidratación</button>
+        <button class="hidra-tab-btn h2" id="btn-h2" onclick="mostrarHidra(2)">💧 Segunda hidratación</button>
+      </div>
+      <div id="msg-h1"></div>
+      <div id="msg-h2" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ═══ SECCIÓN EDITOR ═══ -->
+  <div id="tab-admin" style="display:none; padding-top:1.5rem">
+
+    <!-- Login -->
+    <div id="admin-login-box" class="admin-login">
+      <h2>🔐 Acceso al Editor</h2>
+      <input type="text" id="admin-user" placeholder="Usuario" autocomplete="off">
+      <input type="password" id="admin-pass" placeholder="Contraseña">
+      <button class="admin-login-btn" onclick="adminLogin()">Entrar</button>
+      <div class="admin-error" id="admin-error">Usuario o contraseña incorrectos</div>
+    </div>
+
+    <!-- Panel -->
+    <div id="admin-panel-box" class="admin-panel">
+      <button class="admin-logout-btn" onclick="adminLogout()">← Cerrar sesión</button>
+
+      <div class="admin-tabs">
+        <button class="admin-tab-btn active" onclick="adminTab('recetas',this)">📖 Recetas</button>
+        <button class="admin-tab-btn" onclick="adminTab('pedidos',this)">📋 Pedidos</button>
+      </div>
+
+      <!-- Editor: Recetas -->
+      <div id="admin-recetas" class="admin-section active">
+        <div id="admin-recetas-list"></div>
+        <div class="admin-new-receta">
+          <h3>➕ Nueva receta</h3>
+          <div class="admin-field">
+            <label>Nombre</label>
+            <input type="text" id="nr-nombre" placeholder="Ej: Focaccia">
+          </div>
+          <div class="admin-field">
+            <label>Peso del bollo</label>
+            <input type="text" id="nr-peso" placeholder="Ej: 300 g por bollo">
+          </div>
+          <div class="admin-field">
+            <label>Rendimiento</label>
+            <input type="text" id="nr-rend" placeholder="Ej: 5 panes por amasada">
+          </div>
+          <div class="admin-field">
+            <label>Tipo</label>
+            <select id="nr-tipo">
+              <option value="simple">Simple (una hidratación)</option>
+              <option value="doble">Doble hidratación</option>
+            </select>
+          </div>
+
+          <div class="admin-subsection">Ingredientes (H1 / únicos)</div>
+          <div id="nr-ings-h1"></div>
+          <button class="add-ing-btn" onclick="addIngRow('nr-ings-h1')">+ Ingrediente</button>
+
+          <div id="nr-h2-section" style="display:none">
+            <div class="admin-subsection">Ingredientes segunda hidratación</div>
+            <div id="nr-ings-h2"></div>
+            <button class="add-ing-btn" onclick="addIngRow('nr-ings-h2')">+ Ingrediente H2</button>
+          </div>
+
+          <div class="admin-field" style="margin-top:0.8rem">
+            <label>Nota / Tip (opcional)</label>
+            <input type="text" id="nr-nota" placeholder="Tip opcional...">
+          </div>
+          <button class="admin-save-btn" onclick="guardarNuevaReceta()">💾 Guardar receta</button>
+        </div>
+      </div>
+
+      <!-- Editor: Pedidos -->
+      <div id="admin-pedidos" class="admin-section">
+        <div id="admin-pedidos-list"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div class="saved-toast" id="saved-toast">✓ Guardado</div>
+
+<!-- ═══ BARRA DE NAVEGACIÓN ═══ -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="nav-btn active" onclick="cambiarModo('recetas')" data-tab="recetas">
+    <span class="nav-icon">📖</span>
+    <span class="nav-label">Recetas</span>
+  </button>
+  <button class="nav-btn" onclick="cambiarModo('calculadora')" data-tab="calculadora">
+    <span class="nav-icon">🧮</span>
+    <span class="nav-label">Calculadora</span>
+  </button>
+  <button class="nav-btn" onclick="cambiarModo('pedidos')" data-tab="pedidos">
+    <span class="nav-icon">📋</span>
+    <span class="nav-label">Pedidos</span>
+  </button>
+  <button class="nav-btn" onclick="cambiarModo('mensaje')" data-tab="mensaje">
+    <span class="nav-icon">📨</span>
+    <span class="nav-label">Mensaje</span>
+  </button>
+  <button class="nav-btn" onclick="cambiarModo('admin')" data-tab="admin">
+    <span class="nav-icon">✏️</span>
+    <span class="nav-label">Editor</span>
+  </button>
+</nav>
+
+<script src="utils.js"></script>
+<script src="recetas-data.js"></script>
+<script src="locales-data.js"></script>
+<script src="render.js"></script>
+<script src="calculadora.js"></script>
+<script src="pedidos.js"></script>
+<script src="mensaje.js"></script>
+<script src="admin.js"></script>
+<script src="pwa.js"></script>
+<script src="main.js"></script>
+</body>
+</html>
