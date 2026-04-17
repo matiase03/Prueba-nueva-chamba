@@ -1,0 +1,33 @@
+{
+  "name": "Recetario de Masas",
+  "short_name": "Recetario",
+  "description": "Recetario de masas con calculadora y gestión de pedidos",
+  "start_url": "/Recetario-chamba/",
+  "scope": "/Recetario-chamba/",
+  "display": "standalone",
+  "background_color": "#4a3420",
+  "theme_color": "#4a3420",
+  "orientation": "portrait-primary",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/Recetario-chamba/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/Recetario-chamba/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Recetas",
+      "url": "/Recetario-chamba/",
+      "description": "Ver recetas"
+    }
+  ]
+}
