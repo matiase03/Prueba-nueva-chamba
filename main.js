@@ -111,6 +111,7 @@ async function inicializar() {
   render();
   mostrarLocal('todos');
   renderHistorial();
+  renderMayoristas();
 }
 
 inicializar();

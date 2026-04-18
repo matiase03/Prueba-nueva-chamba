@@ -12,6 +12,7 @@ const SYNC_KEYS = [
   'historial_pedidos',
   'notas_recetas',
   'local_notas',
+  'pedidos_mayoristas',
 ];
 
 // ── Subir un valor a Supabase ────────────────────────────────
