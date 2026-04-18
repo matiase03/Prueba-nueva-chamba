@@ -8,12 +8,12 @@ const ADMIN_HASH = 'a3f2e1b4c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4
 async function adminLogin() {
   const user = document.getElementById('admin-user').value.trim();
   const pass = document.getElementById('admin-pass').value;
-  const hash = await hashStr(user + ':' + pass);
   const userOk = user === 'matiase03';
   const passOk = pass === '15462Asd';
   if (userOk && passOk) {
     document.getElementById('admin-login-box').style.display = 'none';
     document.getElementById('admin-panel-box').style.display = 'block';
+    sessionStorage.setItem('admin_logged', '1');
     renderAdminRecetas();
     renderAdminPedidos();
   } else {
@@ -27,7 +27,16 @@ function adminLogout() {
   document.getElementById('admin-user').value = '';
   document.getElementById('admin-pass').value = '';
   document.getElementById('admin-error').style.display = 'none';
+  sessionStorage.removeItem('admin_logged');
 }
+
+// Restaurar sesión al recargar
+(function restaurarSesionAdmin() {
+  if (sessionStorage.getItem('admin_logged') === '1') {
+    document.getElementById('admin-login-box').style.display = 'none';
+    document.getElementById('admin-panel-box').style.display = 'block';
+  }
+})();
 
 function adminTab(tab, btn) {
   document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
@@ -43,20 +52,26 @@ function showToast(msg = '✓ Guardado') {
   setTimeout(() => t.classList.remove('show'), 2000);
 }
 
+// ── Recetas ocultas (eliminadas de la vista) ──
+function getRecetasOcultas() {
+  try { return JSON.parse(localStorage.getItem('recetas_ocultas') || '[]'); } catch { return []; }
+}
+function saveRecetasOcultas(arr) {
+  localStorage.setItem('recetas_ocultas', JSON.stringify(arr));
+}
+
 // ── Recetas extra (nuevas) desde localStorage ──
 function getRecetasExtra() {
   try { return JSON.parse(localStorage.getItem('recetas_extra') || '[]'); } catch { return []; }
 }
-
 function saveRecetasExtra(arr) {
   localStorage.setItem('recetas_extra', JSON.stringify(arr));
 }
 
-// ── Overrides de recetas base (ediciones de ingredientes/campos) ──
+// ── Overrides de recetas base ──
 function getRecetasOverrides() {
   try { return JSON.parse(localStorage.getItem('recetas_overrides') || '{}'); } catch { return {}; }
 }
-
 function saveRecetasOverrides(obj) {
   localStorage.setItem('recetas_overrides', JSON.stringify(obj));
 }
@@ -74,16 +89,19 @@ function applyRecetasOverrides() {
   });
 }
 
-// ── Carga todas las recetas (base + overrides + extras) ──
+// ── Carga todas las recetas ──
 function loadAllRecetas() {
   applyRecetasOverrides();
-  const extra = getRecetasExtra();
+  const extra   = getRecetasExtra();
+  const ocultas = getRecetasOcultas();
   extra.forEach(r => {
     if (!recetas.find(b => b.nombre === r.nombre)) recetas.push(r);
   });
+  // Filtrar ocultas del select
   const sel = document.getElementById('recipeSelect');
   sel.innerHTML = '<option value="">— Elegí una receta —</option>';
   recetas.forEach((r, i) => {
+    if (ocultas.includes(r.nombre)) return;
     const opt = document.createElement('option');
     opt.value = i;
     opt.textContent = r.nombre + (r.dobleHidratacion ? '  · doble hidratación' : '');
@@ -95,8 +113,8 @@ function loadAllRecetas() {
 const ING_INPUT_STYLE = 'padding:0.5rem 0.7rem;border:1px solid var(--arena);border-radius:8px;font-size:0.85rem;background:var(--crema)';
 
 function ingRowExistenteHTML(ing) {
-  const nombre  = (ing.nombre  || '').replace(/"/g, '&quot;');
-  const unidad  = (ing.unidad  || '').replace(/"/g, '&quot;');
+  const nombre = (ing.nombre || '').replace(/"/g, '&quot;');
+  const unidad = (ing.unidad || '').replace(/"/g, '&quot;');
   return `<div class="admin-ing-row">
     <input type="text"   value="${nombre}"          placeholder="Ingrediente" style="flex:2;min-width:100px;${ING_INPUT_STYLE}">
     <input type="number" value="${ing.cantidad || 0}" min="0" step="0.1"       style="flex:1;min-width:70px;${ING_INPUT_STYLE}">
@@ -107,9 +125,12 @@ function ingRowExistenteHTML(ing) {
 
 // ── Renderizar lista de recetas en editor ──
 function renderAdminRecetas() {
-  const el = document.getElementById('admin-recetas-list');
+  const el      = document.getElementById('admin-recetas-list');
+  const ocultas = getRecetasOcultas();
+
   el.innerHTML = recetas.map((r, i) => {
-    const esExtra = getRecetasExtra().find(e => e.nombre === r.nombre);
+    const esExtra  = getRecetasExtra().find(e => e.nombre === r.nombre);
+    const esOculta = ocultas.includes(r.nombre);
 
     const metaHTML = `
       <div class="admin-subsection">Peso del bollo</div>
@@ -136,16 +157,26 @@ function renderAdminRecetas() {
         <button class="add-ing-btn" onclick="addIngRow('ings-${i}')">+ Ingrediente</button>`;
     }
 
-    return `<div class="admin-card">
+    const nombreEsc = r.nombre.replace(/'/g, "\\'");
+
+    return `<div class="admin-card" style="${esOculta ? 'opacity:0.5' : ''}">
       <div class="admin-card-title" onclick="toggleAdminCard(this)">
-        <span>${r.nombre} ${esExtra ? '<small style="color:var(--hidra1);font-size:0.7rem">★ agregada por vos</small>' : ''}</span>
+        <span>${r.nombre}
+          ${esExtra ? '<small style="color:var(--hidra1);font-size:0.7rem">★ agregada</small>' : ''}
+          ${esOculta ? '<small style="color:#b45000;font-size:0.7rem">● oculta</small>' : ''}
+        </span>
         <span class="chevron">▼</span>
       </div>
       <div class="admin-card-body">
         ${metaHTML}
         ${ingsHTML}
         <button class="admin-save-btn" style="margin-top:1rem" onclick="guardarRecetaExistente(${i})">💾 Guardar cambios</button>
-        ${esExtra ? `<button class="del-btn" style="width:100%;margin-top:0.5rem" onclick="eliminarRecetaExtra('${r.nombre}')">🗑 Eliminar receta</button>` : ''}
+        ${esExtra
+          ? `<button class="del-btn" style="width:100%;margin-top:0.5rem" onclick="eliminarRecetaExtra('${nombreEsc}')">🗑 Eliminar receta</button>`
+          : esOculta
+            ? `<button class="reset-btn" style="margin-top:0.5rem" onclick="mostrarRecetaBase('${nombreEsc}')">👁 Mostrar receta</button>`
+            : `<button class="del-btn" style="width:100%;margin-top:0.5rem;background:rgba(100,100,100,0.1);color:#666" onclick="ocultarRecetaBase('${nombreEsc}')">🙈 Ocultar del listado</button>`
+        }
       </div>
     </div>`;
   }).join('');
@@ -156,10 +187,28 @@ function toggleAdminCard(el) {
   el.nextElementSibling.classList.toggle('open');
 }
 
+// ── Ocultar/mostrar recetas base ──
+function ocultarRecetaBase(nombre) {
+  if (!confirm(`¿Ocultar "${nombre}" del listado de recetas? La podés volver a mostrar desde el editor.`)) return;
+  const ocultas = getRecetasOcultas();
+  if (!ocultas.includes(nombre)) ocultas.push(nombre);
+  saveRecetasOcultas(ocultas);
+  loadAllRecetas();
+  renderAdminRecetas();
+  showToast('🙈 Receta ocultada');
+}
+
+function mostrarRecetaBase(nombre) {
+  const ocultas = getRecetasOcultas().filter(n => n !== nombre);
+  saveRecetasOcultas(ocultas);
+  loadAllRecetas();
+  renderAdminRecetas();
+  showToast('👁 Receta visible');
+}
+
 // ── Guardar cambios de una receta existente ──
 function guardarRecetaExistente(idx) {
   const r = recetas[idx];
-
   const pesoEl = document.getElementById(`card-peso-${idx}`);
   const rendEl = document.getElementById(`card-rend-${idx}`);
   if (pesoEl) r.pesoBollos      = pesoEl.value.trim();
@@ -184,7 +233,6 @@ function guardarRecetaExistente(idx) {
   overrides[r.nombre] = override;
   saveRecetasOverrides(overrides);
 
-  // Sincronizar si es receta extra
   const extras = getRecetasExtra();
   const ex = extras.find(e => e.nombre === r.nombre);
   if (ex) { Object.assign(ex, r); saveRecetasExtra(extras); }
@@ -192,23 +240,13 @@ function guardarRecetaExistente(idx) {
   showToast('✓ Receta guardada');
 }
 
-// ── Edición inline (legacy, mantenido para compatibilidad) ──
-function updateRecetaField(idx, campo, valor) {
-  recetas[idx][campo] = valor;
-  const extras = getRecetasExtra();
-  const ex = extras.find(e => e.nombre === recetas[idx].nombre);
-  if (ex) { ex[campo] = valor; saveRecetasExtra(extras); }
-}
-
 function eliminarRecetaExtra(nombre) {
   if (!confirm(`¿Eliminar la receta "${nombre}"?`)) return;
   const extras = getRecetasExtra().filter(e => e.nombre !== nombre);
   saveRecetasExtra(extras);
-  // Limpiar override si lo tenía
   const overrides = getRecetasOverrides();
   delete overrides[nombre];
   saveRecetasOverrides(overrides);
-  // Quitar de memoria
   const idx = recetas.findIndex(r => r.nombre === nombre);
   if (idx !== -1) recetas.splice(idx, 1);
   loadAllRecetas();
@@ -285,7 +323,6 @@ function guardarNuevaReceta() {
 function getPedidosOverride() {
   try { return JSON.parse(localStorage.getItem('pedidos_override') || '{}'); } catch { return {}; }
 }
-
 function savePedidosOverride(obj) {
   localStorage.setItem('pedidos_override', JSON.stringify(obj));
 }
@@ -295,6 +332,46 @@ function loadPedidosOverrides() {
   locales.forEach(local => {
     if (overrides[local.id]) local.panes = overrides[local.id];
   });
+}
+
+// ── Notas por local ──
+function getNotasLocales() {
+  try { return JSON.parse(localStorage.getItem('local_notas') || '{}'); } catch { return {}; }
+}
+function saveNotasLocales(obj) {
+  localStorage.setItem('local_notas', JSON.stringify(obj));
+}
+
+const DIAS_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+function notaEditorHTML(localId) {
+  const notas = getNotasLocales();
+  const n     = notas[localId] || { texto: '', dias: [] };
+  const diasHTML = DIAS_SEMANA.map((d, i) =>
+    `<label style="display:inline-flex;align-items:center;gap:3px;margin-right:6px;font-size:0.8rem;font-weight:normal;text-transform:none;letter-spacing:0;cursor:pointer">
+      <input type="checkbox" ${(n.dias||[]).includes(i) ? 'checked' : ''} data-dia="${i}" class="dia-check-${localId}"> ${d}
+    </label>`
+  ).join('');
+
+  return `
+    <div style="margin-top:1rem">
+      <div class="admin-subsection">📅 Aviso / nota para este local</div>
+      <div style="margin-bottom:0.4rem;font-size:0.8rem;color:var(--text-light)">Días en que aparece el aviso (dejá todos sin marcar = siempre):</div>
+      <div style="margin-bottom:0.6rem">${diasHTML}</div>
+      <textarea id="nota-local-${localId}" placeholder="Ej: Miércoles a domingo agregar 1 focaccia extra" style="width:100%;min-height:70px;padding:0.6rem 0.8rem;border:1px solid var(--arena);border-radius:8px;font-size:0.85rem;font-family:'DM Sans',sans-serif;background:var(--crema);resize:vertical">${n.texto || ''}</textarea>
+    </div>`;
+}
+
+function guardarNotaLocal(localId) {
+  const texto = (document.getElementById(`nota-local-${localId}`)?.value || '').trim();
+  const diasChecks = document.querySelectorAll(`.dia-check-${localId}:checked`);
+  const dias = Array.from(diasChecks).map(c => parseInt(c.dataset.dia));
+  const diasTexto = dias.length > 0 ? dias.map(d => DIAS_SEMANA[d]).join(', ') : '';
+
+  const notas = getNotasLocales();
+  notas[localId] = { texto, dias, diasTexto };
+  saveNotasLocales(notas);
+  showToast('✓ Nota guardada');
 }
 
 function renderAdminPedidos() {
@@ -309,13 +386,17 @@ function renderAdminPedidos() {
         <div id="admin-panes-${local.id}">
           ${local.panes.map((p, pi) => `
             <div class="admin-pedido-row">
-              <input type="text" value="${p.pan}" placeholder="Pan" onchange="updatePedidoItem('${local.id}',${pi},'pan',this.value)">
-              <input type="text" value="${p.cantidad}" placeholder="Cant." class="cant-input" onchange="updatePedidoItem('${local.id}',${pi},'cantidad',this.value)" style="flex:0.8;${ING_INPUT_STYLE}">
+              <input type="text" value="${p.pan}" placeholder="Pan" onchange="updatePedidoItem('${local.id}',${pi},'pan',this.value)" style="flex:2;${ING_INPUT_STYLE}">
+              <input type="text" value="${p.cantidad}" placeholder="Cant." onchange="updatePedidoItem('${local.id}',${pi},'cantidad',this.value)" style="flex:0.8;${ING_INPUT_STYLE}">
               <button class="del-btn" onclick="deletePedidoItem('${local.id}',${pi})">✕</button>
             </div>`).join('')}
         </div>
         <button class="add-ing-btn" onclick="addPedidoItem('${local.id}')">+ Agregar ítem</button>
-        <button class="admin-save-btn" onclick="guardarPedidoLocal('${local.id}')">💾 Guardar cambios</button>
+        ${notaEditorHTML(local.id)}
+        <div style="display:flex;gap:0.5rem;margin-top:1rem">
+          <button class="admin-save-btn" style="flex:1" onclick="guardarPedidoLocal('${local.id}')">💾 Guardar pedido</button>
+          <button class="admin-save-btn" style="flex:1;background:var(--hidra2)" onclick="guardarNotaLocal('${local.id}')">📝 Guardar nota</button>
+        </div>
       </div>
     </div>`).join('');
 }

@@ -85,7 +85,7 @@ function actualizarHintBollos(r, mult) {
   if (totalMasa <= 0) { row.style.display = 'none'; return; }
 
   row.style.display  = 'block';
-  const bollosEst = Math.round((totalMasa * mult) / gPorBollo);
+  const bollosEst = Math.ceil((totalMasa * mult) / gPorBollo);
   hint.textContent   = bollosEst > 0 ? `≈ ${bollosEst} bollos con este multiplicador` : '';
   if (!input.value || document.activeElement !== input) input.value = bollosEst || '';
 }

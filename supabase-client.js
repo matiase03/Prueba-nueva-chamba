@@ -7,9 +7,11 @@ const supa      = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 const SYNC_KEYS = [
   'recetas_extra',
   'recetas_overrides',
+  'recetas_ocultas',
   'pedidos_override',
   'historial_pedidos',
   'notas_recetas',
+  'local_notas',
 ];
 
 // ── Subir un valor a Supabase ────────────────────────────────

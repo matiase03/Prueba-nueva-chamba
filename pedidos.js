@@ -24,28 +24,22 @@ function toggleCheck(localId, pan, checkbox) {
   row.classList.toggle('done', checkbox.checked);
 }
 
-// ── Historial de entregas ──
+// ── Notas por local ──────────────────────────────────────────
+function getNotasLocales() {
+  try { return JSON.parse(localStorage.getItem('local_notas') || '{}'); } catch { return {}; }
+}
+
+function saveNotasLocales(obj) {
+  localStorage.setItem('local_notas', JSON.stringify(obj));
+}
+
+// ── Renderizar historial de entregas ─────────────────────────
 function getHistorial() {
   try { return JSON.parse(localStorage.getItem('historial_pedidos') || '[]'); } catch { return []; }
 }
 
 function saveHistorial(arr) {
   localStorage.setItem('historial_pedidos', JSON.stringify(arr));
-}
-
-function marcarEntregado(localId, localNombre) {
-  const local = locales.find(l => l.id === localId);
-  if (!local) return;
-  const historial = getHistorial();
-  historial.unshift({
-    localNombre,
-    fecha: new Date().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }),
-    panes: local.panes.filter(p => p.pan.trim()).map(p => ({ pan: p.pan, cantidad: p.cantidad }))
-  });
-  historial.splice(60);
-  saveHistorial(historial);
-  renderHistorial();
-  showToast('✓ Entrega registrada');
 }
 
 function renderHistorial() {
@@ -76,6 +70,23 @@ function renderHistorial() {
         <button class="reset-btn" style="margin-top:0.8rem" onclick="if(confirm('¿Borrar todo el historial?')){saveHistorial([]);renderHistorial()}">🗑 Borrar historial</button>
       </div>
     </div>`;
+}
+
+// ── Mostrar nota del local si existe ─────────────────────────
+function notaLocalHTML(localId) {
+  const notas = getNotasLocales();
+  const n = notas[localId];
+  if (!n || (!n.texto && !n.diasTexto)) return '';
+
+  let html = '';
+  if (n.diasTexto) {
+    html += `<div class="local-nota" style="background:rgba(200,150,12,0.1);border-top:1px solid rgba(200,150,12,0.3);color:var(--cafe-oscuro);">
+      📅 <strong>${n.diasTexto}:</strong> ${n.texto}
+    </div>`;
+  } else if (n.texto) {
+    html += `<div class="local-nota">📝 ${n.texto}</div>`;
+  }
+  return html;
 }
 
 function mostrarLocal(id) {
@@ -160,9 +171,9 @@ function mostrarLocal(id) {
         <div class="local-header">📍 ${local.nombre}</div>
         <table class="pedidos-table">${filasHTML}</table>
         ${local.nota ? `<div class="local-nota">⚠️ ${local.nota}</div>` : ''}
+        ${notaLocalHTML(local.id)}
         <div class="local-actions">
           <button class="reset-btn" onclick="resetChecks('${local.id}')">↺ Desmarcar</button>
-          <button class="entrega-btn" onclick="marcarEntregado('${local.id}','${local.nombre}')">✓ Marcar entregado</button>
         </div>
       </div>`;
   }).join('');

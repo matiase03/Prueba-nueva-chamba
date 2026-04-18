@@ -62,46 +62,115 @@
   <div id="tab-calculadora" style="display:none">
     <div style="padding-top:1.5rem">
 
-      <!-- Panes simples -->
+      <!-- Molde Avena -->
       <div class="calc-section">
         <div class="calc-section-title">Molde Avena</div>
         <div class="calc-row">
-          <label>Panes necesarios<small>950 g · ~2 por masa (2095 g)</small></label>
+          <label>Panes necesarios<small>950 g · masa ~2095 g</small></label>
           <input type="number" min="0" value="0" oninput="calcSimple(this, 950, 2095, 'res-molde-avena')">
         </div>
         <div id="res-molde-avena"></div>
       </div>
 
+      <!-- Molde Integral -->
       <div class="calc-section">
         <div class="calc-section-title">Molde Integral</div>
         <div class="calc-row">
-          <label>Panes necesarios<small>950 g · ~2 por masa (2095 g)</small></label>
+          <label>Panes necesarios<small>950 g · masa ~2095 g</small></label>
           <input type="number" min="0" value="0" oninput="calcSimple(this, 950, 2095, 'res-molde-integral')">
         </div>
         <div id="res-molde-integral"></div>
       </div>
 
+      <!-- Centeno -->
       <div class="calc-section">
         <div class="calc-section-title">Centeno</div>
         <div class="calc-row">
-          <label>Panes necesarios<small>900 g · ~2 por masa (1990 g)</small></label>
-          <input type="number" min="0" value="0" oninput="calcSimple(this, 900, 1990, 'res-centeno')">
+          <label>Panes necesarios<small>950 g · masa ~1990 g</small></label>
+          <input type="number" min="0" value="0" oninput="calcSimple(this, 950, 1990, 'res-centeno')">
         </div>
         <div id="res-centeno"></div>
       </div>
 
+      <!-- Campo -->
       <div class="calc-section">
-        <div class="calc-section-title">Campo / Integral / Semilla / Nuez y Miel</div>
+        <div class="calc-section-title">Campo</div>
         <div class="calc-row">
-          <label>Panes necesarios<small>800 g por bollo</small></label>
-          <input type="number" min="0" value="0" oninput="calcSimple(this, 800, 1760, 'res-campo')">
+          <label>Panes necesarios<small>750 g · masa ~1950 g</small></label>
+          <input type="number" min="0" value="0" oninput="calcSimple(this, 750, 1950, 'res-campo')">
         </div>
         <div id="res-campo"></div>
+      </div>
+
+      <!-- Integral -->
+      <div class="calc-section">
+        <div class="calc-section-title">Integral</div>
+        <div class="calc-row">
+          <label>Panes necesarios<small>750 g · masa ~2045 g</small></label>
+          <input type="number" min="0" value="0" oninput="calcSimple(this, 750, 2045, 'res-integral')">
+        </div>
+        <div id="res-integral"></div>
+      </div>
+
+      <!-- Semilla -->
+      <div class="calc-section">
+        <div class="calc-section-title">Semilla</div>
+        <div class="calc-row">
+          <label>Panes necesarios<small>750 g · masa ~2070 g</small></label>
+          <input type="number" min="0" value="0" oninput="calcSimple(this, 750, 2070, 'res-semilla')">
+        </div>
+        <div id="res-semilla"></div>
+      </div>
+
+      <!-- Nuez y Miel -->
+      <div class="calc-section">
+        <div class="calc-section-title">Nuez y Miel</div>
+        <div class="calc-row">
+          <label>Panes necesarios<small>750 g · masa ~2060 g</small></label>
+          <input type="number" min="0" value="0" oninput="calcSimple(this, 750, 2060, 'res-nuez')">
+        </div>
+        <div id="res-nuez"></div>
+      </div>
+
+      <!-- Alemana -->
+      <div class="calc-section">
+        <div class="calc-section-title">Alemana</div>
+        <div class="calc-row">
+          <label>Alemanas chicas<small>1100 g · masa ~1900 g</small></label>
+          <input type="number" min="0" value="0" id="alem-chica" oninput="calcAlemana()">
+        </div>
+        <div class="calc-row">
+          <label>Alemanas grandes<small>2200 g</small></label>
+          <input type="number" min="0" value="0" id="alem-grande" oninput="calcAlemana()">
+        </div>
+        <div id="res-alemana"></div>
+      </div>
+
+      <!-- Varillin / Mignon / Baguette -->
+      <div class="calc-section">
+        <div class="calc-section-title">Varillin / Mignon / Baguette</div>
+        <div class="calc-row">
+          <label>Varillines<small>140 g · masa ~1625 g</small></label>
+          <input type="number" min="0" value="0" id="gp-varillin" oninput="calcGP()">
+        </div>
+        <div class="calc-row">
+          <label>Mignones<small>60 g</small></label>
+          <input type="number" min="0" value="0" id="gp-mignon" oninput="calcGP()">
+        </div>
+        <div class="calc-row">
+          <label>Baguettes<small>340 g</small></label>
+          <input type="number" min="0" value="0" id="gp-baguette" oninput="calcGP()">
+        </div>
+        <div id="res-gp"></div>
       </div>
 
       <!-- Masa de Viena -->
       <div class="calc-section">
         <div class="calc-section-title">Masa de Viena</div>
+        <div class="calc-row">
+          <label>Lactales<small>750 g · masa ~1794 g</small></label>
+          <input type="number" min="0" value="0" id="viena-lactal" oninput="calcViena()">
+        </div>
         <div class="calc-row">
           <label>Vienas<small>90 g</small></label>
           <input type="number" min="0" value="0" id="viena-viena" oninput="calcViena()">
@@ -115,6 +184,36 @@
           <input type="number" min="0" value="0" id="viena-panera" oninput="calcViena()">
         </div>
         <div id="res-viena"></div>
+      </div>
+
+      <!-- Lomo -->
+      <div class="calc-section">
+        <div class="calc-section-title">Lomo</div>
+        <div class="calc-row">
+          <label>Panes necesarios<small>160 g · masa ~1760 g</small></label>
+          <input type="number" min="0" value="0" oninput="calcSimple(this, 160, 1760, 'res-lomo')">
+        </div>
+        <div id="res-lomo"></div>
+      </div>
+
+      <!-- Brioche -->
+      <div class="calc-section">
+        <div class="calc-section-title">Brioche</div>
+        <div class="calc-row">
+          <label>Panes necesarios<small>90 g · masa ~2050 g</small></label>
+          <input type="number" min="0" value="0" oninput="calcSimple(this, 90, 2050, 'res-brioche')">
+        </div>
+        <div id="res-brioche"></div>
+      </div>
+
+      <!-- Hamburguesa Pedidos -->
+      <div class="calc-section">
+        <div class="calc-section-title">Hamburguesa Pedidos</div>
+        <div class="calc-row">
+          <label>Panes necesarios<small>140 g · masa ~1840 g</small></label>
+          <input type="number" min="0" value="0" oninput="calcSimple(this, 140, 1840, 'res-hambpedidos')">
+        </div>
+        <div id="res-hambpedidos"></div>
       </div>
 
     </div>
