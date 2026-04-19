@@ -21,54 +21,157 @@ function cambiarModo(modo) {
   if (modo === 'inicio')  renderInicio();
 }
 
+// ── Helpers de cálculo ────────────────────────────────────────
+// Extrae el número de gramos de un string como "750 g por bollo".
+function _parsePesoBollos(str) {
+  if (!str) return null;
+  const m = str.match(/(\d+[\.,]?\d*)/);
+  return m ? parseFloat(m[1].replace(',', '.')) : null;
+}
+
+// Suma todos los ingredientes en gramos de una receta de doble
+// hidratación (hidratacion1 + hidratacion2, omite unidades != "g").
+function _masaTotalDH(receta) {
+  let total = 0;
+  ['hidratacion1', 'hidratacion2'].forEach(fase => {
+    if (!receta[fase]) return;
+    (receta[fase].ingredientes || []).forEach(ing => {
+      if ((ing.unidad || '').toLowerCase() === 'g') total += (ing.cantidad || 0);
+    });
+  });
+  return total;
+}
+
+// Calcula bollos exactos por amasada SIN redondear.
+// Ej: 2010g masa / 750g bollo = 2.68 bollos (decimal exacto).
+// El redondeo final lo hace el caller con Math.ceil sobre el
+// total de bollos necesarios: ceil(totalPanes / bollosExactos).
+function _bollosPorLote(receta) {
+  const pesoBollo = _parsePesoBollos(receta.pesoBollos);
+  if (!pesoBollo) return null;
+  const masa = _masaTotalDH(receta);
+  if (!masa) return null;
+  return masa / pesoBollo; // decimal exacto, sin Math.round
+}
+
+// ── Cálculo de producción del día ─────────────────────────────
+// Devuelve array de { nombre, multiplicador, extra? } para cada
+// receta de doble hidratación.
+function calcularProduccionDia() {
+  const norm = s => s.toLowerCase().trim()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+
+  // Recetas de doble hidratación que NO son ciabatta.
+  // panNames: nombres tal como aparecen en locales-data.
+  const RECETAS_DH = [
+    { nombre: 'Molde Avena',    panNames: ['Molde Avena']    },
+    { nombre: 'Molde Integral', panNames: ['Molde Integral'] },
+    { nombre: 'Centeno',        panNames: ['Centeno']        },
+    { nombre: 'Campo',          panNames: ['Campo']          },
+    { nombre: 'Integral',       panNames: ['Integral']       },
+    { nombre: 'Semilla',        panNames: ['Semilla']        },
+    { nombre: 'Nuez y Miel',    panNames: ['Nuez y Miel']    },
+  ];
+
+  const activos = (typeof mayoristasActivos === 'function') ? mayoristasActivos() : [];
+
+  // ── Recetas regulares ──────────────────────────────────────
+  const resultados = RECETAS_DH.map(cfg => {
+    // Buscar la receta en el array global para calcular bollos por lote
+    const recetaData = (typeof recetas !== 'undefined')
+      ? recetas.find(r => norm(r.nombre) === norm(cfg.nombre))
+      : null;
+    const bollosPorLote = recetaData ? (_bollosPorLote(recetaData) || 2) : 2;
+
+    let total = 0;
+
+    // Sumar de locales
+    locales.forEach(local => {
+      local.panes.forEach(p => {
+        const matchNombre = cfg.panNames.some(n => norm(n) === norm(p.pan));
+        if (!matchNombre) return;
+        const num = parseFloat(p.cantidad);
+        if (!isNaN(num)) total += num;
+      });
+    });
+
+    // Sumar de mayoristas activos (con matching flexible)
+    activos.forEach(order => {
+      order.panes.forEach(p => {
+        const matchNombre = cfg.panNames.some(n => {
+          const np = norm(p.pan), nn = norm(n);
+          return np === nn || np.includes(nn) || nn.includes(np);
+        });
+        if (!matchNombre) return;
+        const num = parseFloat(p.cantidad);
+        if (!isNaN(num) && num > 0) total += num;
+      });
+    });
+
+    const multiplicador = Math.ceil(total / bollosPorLote);
+    return { nombre: cfg.nombre, multiplicador, bollosPorLote };
+  });
+
+  // ── Ciabatta (regla especial) ──────────────────────────────
+  // Base siempre ×5. Las adiciones vienen SOLO de mayoristas:
+  //   - Ciabatta larga / Focaccia / Focaccia entera → cada unidad suma ×1
+  //   - Ciabatta corta / Ciabatta chica              → cada 8 suman ×1 (ceil)
+  let ciabattaMult  = 5;
+  const ciabExtras  = [];
+
+  const POR_UNIDAD = ['ciabatta larga', 'focaccia', 'focaccia entera', 'focaccia larga'];
+  const POR_OCHO   = ['ciabatta corta', 'ciabatta chica'];
+
+  activos.forEach(order => {
+    order.panes.forEach(p => {
+      const pn  = norm(p.pan);
+      const num = parseFloat(p.cantidad) || 0;
+      if (num <= 0) return;
+
+      if (POR_UNIDAD.some(n => pn.includes(n) || n.includes(pn))) {
+        ciabattaMult += num;
+        ciabExtras.push(`${num} ${p.pan}`);
+      } else if (POR_OCHO.some(n => pn.includes(n) || n.includes(pn))) {
+        const extra = Math.ceil(num / 8);
+        ciabattaMult += extra;
+        ciabExtras.push(`${num} ${p.pan}`);
+      }
+    });
+  });
+
+  resultados.push({
+    nombre: 'Ciabatta',
+    multiplicador: ciabattaMult,
+    extra: ciabExtras.length ? ciabExtras : null,
+  });
+
+  return resultados;
+}
+
 // ── Pantalla de inicio ──
 function renderInicio() {
   const el = document.getElementById('tab-inicio');
   if (!el) return;
 
-  const hoy     = new Date();
-  const diaFmt  = hoy.toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' });
-  const diaStr  = diaFmt.charAt(0).toUpperCase() + diaFmt.slice(1);
+  const hoy    = new Date();
+  const diaFmt = hoy.toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' });
+  const diaStr = diaFmt.charAt(0).toUpperCase() + diaFmt.slice(1);
 
-  // Calcular totales (mismo algoritmo que mostrarLocal 'totales')
-  const totales = {};
-  locales.forEach(local => {
-    local.panes.forEach(p => {
-      const cant = p.cantidad.toLowerCase();
-      if (cant.includes('sobrante') || cant.match(/placa/)) return;
-      const num = parseFloat(cant);
-      if (!isNaN(num) && num > 0) totales[p.pan] = (totales[p.pan] || 0) + num;
-    });
-  });
+  const produccion = calcularProduccionDia();
+  const activos    = (typeof mayoristasActivos === 'function') ? mayoristasActivos() : [];
 
-  const mayActivos = (typeof mayoristasActivos === 'function') ? mayoristasActivos() : [];
-  mayActivos.forEach(order => {
-    order.panes.forEach(p => {
-      const num = parseFloat(p.cantidad);
-      if (isNaN(num) || num <= 0) return;
-      const clave = (typeof encontrarClavePan === 'function')
-        ? (encontrarClavePan(p.pan, Object.keys(totales)) || p.pan)
-        : p.pan;
-      totales[clave] = (totales[clave] || 0) + num;
-    });
-  });
+  const prodHTML = produccion.map(({ nombre, multiplicador, extra }) => `
+    <div class="inicio-pan-row">
+      <span class="inicio-pan-nombre">${nombre}</span>
+      <div style="text-align:right">
+        <span class="inicio-pan-cant">×${multiplicador}</span>
+        ${extra ? `<div style="font-size:0.72rem;color:var(--hidra1);margin-top:1px">+may: ${extra.join(', ')}</div>` : ''}
+      </div>
+    </div>`).join('');
 
-  const ordenFijo  = ["Molde Avena","Molde Integral","Centeno","Campo","Integral","Semilla","Nuez y Miel"];
-  const filasPanes = [
-    ...ordenFijo.filter(p => totales[p]).map(p => [p, totales[p]]),
-    ...Object.entries(totales).filter(([p]) => !ordenFijo.includes(p)).sort((a,b) => a[0].localeCompare(b[0]))
-  ];
-
-  const totalHTML = filasPanes.length
-    ? filasPanes.map(([pan, cant]) => `
-        <div class="inicio-pan-row">
-          <span class="inicio-pan-nombre">${pan}</span>
-          <span class="inicio-pan-cant">${cant}</span>
-        </div>`).join('')
-    : `<p style="color:var(--text-light);font-size:0.85rem;font-style:italic">Sin producción cargada para hoy</p>`;
-
-  const mayHTML = mayActivos.length
-    ? mayActivos.map(o => `
+  const mayHTML = activos.length
+    ? activos.map(o => `
         <div class="inicio-may-card">
           <div class="inicio-may-cliente">🏭 ${o.cliente}</div>
           <div class="inicio-may-panes">${o.panes.map(p => `${p.pan} ×${p.cantidad}`).join(' · ')}</div>
@@ -82,14 +185,18 @@ function renderInicio() {
       </div>
 
       <div class="inicio-card">
-        <div class="inicio-card-title">🔥 A producir hoy${mayActivos.length ? ' <small style="font-family:DM Sans,sans-serif;font-size:0.72rem;font-weight:400;color:var(--hidra1)">(incluye mayoristas)</small>' : ''}</div>
-        ${totalHTML}
-        <button class="reset-btn" style="margin-top:0.8rem" onclick="cambiarModo('pedidos');setTimeout(()=>{document.getElementById('localSelect').value='totales';mostrarLocal('totales')},50)">
-          Ver detalle completo →
+        <div class="inicio-card-title">
+          🔥 Masas a hacer hoy
+          ${activos.length ? '<small style="font-family:DM Sans,sans-serif;font-size:0.72rem;font-weight:400;color:var(--hidra1)">(incluye mayoristas)</small>' : ''}
+        </div>
+        ${prodHTML}
+        <button class="reset-btn" style="margin-top:0.9rem"
+          onclick="cambiarModo('pedidos');setTimeout(()=>{document.getElementById('localSelect').value='totales';mostrarLocal('totales')},50)">
+          Ver detalle de panes →
         </button>
       </div>
 
-      ${mayActivos.length ? `
+      ${activos.length ? `
       <div class="inicio-card inicio-card-may">
         <div class="inicio-card-title">📦 Mayoristas activos hoy</div>
         ${mayHTML}
