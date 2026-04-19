@@ -13,6 +13,7 @@ const SYNC_KEYS = [
   'notas_recetas',
   'local_notas',
   'pedidos_mayoristas',
+  'stock_panes',
 ];
 
 // ── Subir un valor a Supabase ────────────────────────────────
@@ -56,6 +57,11 @@ function supaIniciarRealtime() {
 
         // Refrescar la UI según qué dato cambió
         const clave = row.clave;
+
+        if (clave === 'stock_panes') {
+          const home = document.getElementById('tab-inicio');
+          if (home && home.style.display !== 'none') renderInicio();
+        }
 
         if (clave === 'pedidos_mayoristas') {
           if (typeof renderMayoristasCards === 'function') renderMayoristasCards();

@@ -1597,3 +1597,80 @@ body.dark .steps-list li { border-color: var(--arena); color: var(--text); }
 body.dark .inicio-card       { background: #231c14; }
 body.dark .inicio-acceso     { background: #231c14; border-color: var(--arena); color: var(--text); }
 body.dark .inicio-acceso:active { background: #2e2418; }
+
+/* ══════════════════════════════════════════
+   STOCK DE PANES
+══════════════════════════════════════════ */
+#stock-panel {
+  padding-top: 0.6rem;
+}
+
+.stock-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--arena);
+}
+
+.stock-row:last-of-type { border-bottom: none; }
+
+.stock-nombre {
+  font-size: 0.9rem;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.stock-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.stock-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--arena);
+  background: var(--crema);
+  color: var(--cafe-oscuro);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stock-btn:active { background: var(--arena); }
+
+.stock-input {
+  width: 48px;
+  height: 30px;
+  text-align: center;
+  border: 1px solid var(--arena);
+  border-radius: 8px;
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--cafe-oscuro);
+  background: var(--crema);
+  padding: 0;
+  -moz-appearance: textfield;
+}
+
+.stock-input::-webkit-outer-spin-button,
+.stock-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.stock-chevron.open { transform: rotate(180deg) !important; }
+
+.inicio-pan-row.stock-completo {
+  opacity: 0.5;
+}
+
+body.dark .stock-btn { background: #2e2418; border-color: var(--arena); }
+body.dark .stock-btn:active { background: #3a2c1e; }
+body.dark .stock-input { background: #2e2418; color: var(--text); border-color: var(--arena); }

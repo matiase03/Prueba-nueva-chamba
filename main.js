@@ -168,6 +168,82 @@ function calcularProduccionDia() {
   return resultados.filter(r => r.masas > 0);
 }
 
+// ================================================================
+// STOCK DE PANES
+// ================================================================
+
+const STOCK_KEY = 'stock_panes';
+
+// Los panes que tienen stock (excluye Ciabatta)
+const PANES_CON_STOCK = [
+  'Molde Avena', 'Molde Integral', 'Centeno', 'Campo',
+  'Integral', 'Semilla', 'Nuez y Miel'
+];
+
+// Devuelve la hora de reset: 4am domingos, 5am resto
+function horaReset() {
+  const hoy = new Date();
+  const esDomingo = hoy.getDay() === 0;
+  return esDomingo ? 4 : 5;
+}
+
+// Devuelve timestamp del último reset (hoy a las 4 o 5am)
+function timestampReset() {
+  const ahora = new Date();
+  const hora  = horaReset();
+  const reset = new Date(ahora);
+  reset.setHours(hora, 0, 0, 0);
+  // Si todavía no llegamos a la hora de reset de hoy, el último reset fue ayer
+  if (ahora < reset) reset.setDate(reset.getDate() - 1);
+  return reset.getTime();
+}
+
+function getStock() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STOCK_KEY) || '{}');
+    // Si el stock fue guardado antes del último reset, descartarlo
+    if (!raw._ts || raw._ts < timestampReset()) return {};
+    return raw;
+  } catch { return {}; }
+}
+
+function saveStock(obj) {
+  obj._ts = Date.now();
+  localStorage.setItem(STOCK_KEY, JSON.stringify(obj));
+}
+
+function getStockPan(nombre) {
+  const s = getStock();
+  return parseInt(s[nombre] || 0);
+}
+
+function setStockPan(nombre, valor) {
+  const s = getStock();
+  s[nombre] = Math.max(0, parseInt(valor) || 0);
+  saveStock(s);
+  renderInicio(); // re-renderizar para actualizar los cálculos
+}
+
+// Verificar si hay que resetear (para cuando la página está abierta y pasa la hora)
+let _resetWatchdog = null;
+function iniciarWatchdogReset() {
+  if (_resetWatchdog) clearInterval(_resetWatchdog);
+  _resetWatchdog = setInterval(() => {
+    const s = getStock();
+    if (s._ts && s._ts < timestampReset()) {
+      // Pasó la hora de reset, limpiar stock
+      saveStock({});
+      renderInicio();
+      const toast = document.getElementById('saved-toast');
+      if (toast) {
+        toast.textContent = '🔄 Stock reseteado';
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2500);
+      }
+    }
+  }, 60 * 1000); // chequear cada minuto
+}
+
 // ── Pantalla de inicio ──
 function renderInicio() {
   const el = document.getElementById('tab-inicio');
@@ -180,14 +256,76 @@ function renderInicio() {
   const produccion = calcularProduccionDia();
   const activos    = (typeof mayoristasActivos === 'function') ? mayoristasActivos() : [];
 
-  const prodHTML = produccion.map(({ nombre, masas, extra }) => `
-    <div class="inicio-pan-row">
+  // Calcular producción real descontando stock
+  const prodReal = produccion.map(item => {
+    if (item.nombre === 'Ciabatta') return { ...item, stockPanes: 0, masasReales: item.masas };
+
+    const recetaData = (typeof recetas !== 'undefined')
+      ? recetas.find(r => r.nombre === item.nombre) : null;
+
+    // Gramos por masa de esta receta
+    let grPorMasa = 0;
+    if (recetaData) {
+      ['hidratacion1','hidratacion2'].forEach(fase => {
+        (recetaData[fase]?.ingredientes || []).forEach(ing => {
+          if ((ing.unidad||'').toLowerCase() === 'g') grPorMasa += (ing.cantidad||0);
+        });
+      });
+    }
+    if (!grPorMasa) grPorMasa = 2000;
+
+    const pesoBollo   = recetaData ? _parsePesoBollos(recetaData.pesoBollos) : 750;
+    const stockPanes  = getStockPan(item.nombre);
+    const stockGramos = stockPanes * (pesoBollo || 750);
+
+    // Gramos necesarios totales = masas × grPorMasa
+    const grNecesarios = item.masas * grPorMasa;
+    const grRestantes  = Math.max(0, grNecesarios - stockGramos);
+    const masasReales  = grRestantes > 0 ? Math.ceil(grRestantes / grPorMasa) : 0;
+
+    return { ...item, stockPanes, masasReales, grPorMasa, pesoBollo };
+  });
+
+  // Filas de producción
+  const prodHTML = prodReal.map(({ nombre, masas, masasReales, stockPanes, extra }) => {
+    const tieneStock = stockPanes > 0;
+    const completo   = masasReales === 0;
+    return `
+    <div class="inicio-pan-row${completo ? ' stock-completo' : ''}">
       <span class="inicio-pan-nombre">${nombre}</span>
       <div style="text-align:right">
-        <span class="inicio-pan-cant">×${masas}</span>
+        ${tieneStock && !completo ? `
+          <span class="inicio-pan-cant">×${masasReales}</span>
+          <div style="font-size:0.72rem;color:var(--text-light);margin-top:1px">de ×${masas} · stock: ${stockPanes} panes</div>
+        ` : completo ? `
+          <span style="font-size:0.82rem;color:var(--hidra1);font-weight:600">✓ cubierto</span>
+          <div style="font-size:0.72rem;color:var(--text-light);margin-top:1px">stock: ${stockPanes} panes</div>
+        ` : `
+          <span class="inicio-pan-cant">×${masas}</span>
+        `}
         ${extra ? `<div style="font-size:0.72rem;color:var(--hidra1);margin-top:1px">+may: ${extra.join(', ')}</div>` : ''}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+
+  // Formulario de stock
+  const stockHTML = PANES_CON_STOCK.map(nombre => {
+    const val = getStockPan(nombre);
+    return `
+      <div class="stock-row">
+        <span class="stock-nombre">${nombre}</span>
+        <div class="stock-controls">
+          <button class="stock-btn" onclick="setStockPan('${nombre}', ${val - 1})">−</button>
+          <input type="number" class="stock-input" value="${val}" min="0"
+            onchange="setStockPan('${nombre}', this.value)"
+            oninput="setStockPan('${nombre}', this.value)">
+          <button class="stock-btn" onclick="setStockPan('${nombre}', ${val + 1})">+</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  const hayStock = PANES_CON_STOCK.some(n => getStockPan(n) > 0);
+  const horaResetStr = `${horaReset()}:00 hs`;
 
   const mayHTML = activos.length
     ? activos.map(o => `
@@ -203,9 +341,27 @@ function renderInicio() {
         <div class="inicio-fecha-dia">📅 ${diaStr}</div>
       </div>
 
+      <!-- Stock disponible -->
+      <div class="inicio-card">
+        <div class="inicio-card-title" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between"
+             onclick="document.getElementById('stock-panel').classList.toggle('open');this.querySelector('.stock-chevron').classList.toggle('open')">
+          <span>📦 Stock disponible${hayStock ? ` <small style="font-size:0.72rem;font-weight:400;color:var(--hidra1)">· hay stock cargado</small>` : ''}</span>
+          <span class="stock-chevron" style="font-size:0.75rem;color:var(--text-light);transition:transform 0.2s">▼</span>
+        </div>
+        <div id="stock-panel" style="display:none">
+          <div style="font-size:0.75rem;color:var(--text-light);margin-bottom:0.8rem">
+            Ingresá los panes que ya tenés hechos. Se resetea automáticamente a las ${horaResetStr}.
+          </div>
+          ${stockHTML}
+          ${hayStock ? `<button class="reset-btn" style="margin-top:0.6rem" onclick="saveStock({});renderInicio()">↺ Limpiar stock</button>` : ''}
+        </div>
+      </div>
+
+      <!-- Masas a tirar -->
       <div class="inicio-card">
         <div class="inicio-card-title">
           🔥 Masas a tirar hoy
+          ${hayStock ? '<small style="font-family:DM Sans,sans-serif;font-size:0.72rem;font-weight:400;color:var(--hidra1)">(descontando stock)</small>' : ''}
           ${activos.length ? '<small style="font-family:DM Sans,sans-serif;font-size:0.72rem;font-weight:400;color:var(--hidra1)">(incluye mayoristas)</small>' : ''}
         </div>
         ${prodHTML}
@@ -236,6 +392,15 @@ function renderInicio() {
         </button>
       </div>
     </div>`;
+
+  // Abrir panel si hay stock cargado
+  if (hayStock) {
+    const panel = document.getElementById('stock-panel');
+    if (panel) {
+      panel.style.display = 'block';
+      panel.classList.add('open');
+    }
+  }
 }
 
 // ── Modo oscuro ──
@@ -340,6 +505,9 @@ async function inicializar() {
 
   // Arrancar en la pantalla de inicio
   cambiarModo('inicio');
+
+  // Watchdog para reset automático de stock
+  iniciarWatchdogReset();
 
   // Activar sync en tiempo real
   if (typeof supaIniciarRealtime === 'function') {
