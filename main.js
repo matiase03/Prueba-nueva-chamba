@@ -344,12 +344,12 @@ function renderInicio() {
       <!-- Stock disponible -->
       <div class="inicio-card">
         <div class="inicio-card-title" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between"
-             onclick="document.getElementById('stock-panel').classList.toggle('open');this.querySelector('.stock-chevron').classList.toggle('open')">
+             onclick="toggleStockPanel()">
           <span>📦 Stock disponible${hayStock ? ` <small style="font-size:0.72rem;font-weight:400;color:var(--hidra1)">· hay stock cargado</small>` : ''}</span>
-          <span class="stock-chevron" style="font-size:0.75rem;color:var(--text-light);transition:transform 0.2s">▼</span>
+          <span id="stock-chevron" style="font-size:0.75rem;color:var(--text-light);transition:transform 0.2s;display:inline-block">▼</span>
         </div>
-        <div id="stock-panel" style="display:none">
-          <div style="font-size:0.75rem;color:var(--text-light);margin-bottom:0.8rem">
+        <div id="stock-panel" style="${hayStock ? '' : 'display:none'}">
+          <div style="font-size:0.75rem;color:var(--text-light);margin-bottom:0.8rem;padding-top:0.4rem">
             Ingresá los panes que ya tenés hechos. Se resetea automáticamente a las ${horaResetStr}.
           </div>
           ${stockHTML}
@@ -393,14 +393,16 @@ function renderInicio() {
       </div>
     </div>`;
 
-  // Abrir panel si hay stock cargado
-  if (hayStock) {
-    const panel = document.getElementById('stock-panel');
-    if (panel) {
-      panel.style.display = 'block';
-      panel.classList.add('open');
-    }
-  }
+  // Abrir panel si hay stock cargado — ya lo maneja el style en el innerHTML
+}
+
+function toggleStockPanel() {
+  const panel   = document.getElementById('stock-panel');
+  const chevron = document.getElementById('stock-chevron');
+  if (!panel) return;
+  const abierto = panel.style.display !== 'none';
+  panel.style.display  = abierto ? 'none' : 'block';
+  if (chevron) chevron.style.transform = abierto ? '' : 'rotate(180deg)';
 }
 
 // ── Modo oscuro ──
