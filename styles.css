@@ -1465,3 +1465,135 @@ body.dark .steps-list li { border-color: var(--arena); color: var(--text); }
 .saved-toast {
   bottom: 5.2rem;
 }
+
+/* ══════════════════════════════════════════
+   ANIMACIONES ENTRE PESTAÑAS
+══════════════════════════════════════════ */
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.tab-fade-in {
+  animation: tabFadeIn 0.22s ease forwards;
+}
+
+/* ══════════════════════════════════════════
+   PANTALLA DE INICIO
+══════════════════════════════════════════ */
+.inicio-fecha {
+  text-align: center;
+  padding: 0.5rem 0 1.2rem;
+}
+
+.inicio-fecha-dia {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.35rem;
+  color: var(--cafe-oscuro);
+  font-style: italic;
+}
+
+.inicio-card {
+  background: white;
+  border-radius: 16px;
+  padding: 1.3rem 1.5rem;
+  box-shadow: 0 4px 20px rgba(74,52,32,0.08);
+  margin-bottom: 1.2rem;
+}
+
+.inicio-card-may {
+  border-left: 4px solid #27ae60;
+}
+
+.inicio-card-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--cafe-oscuro);
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--arena);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.inicio-pan-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--arena);
+  font-size: 0.92rem;
+}
+
+.inicio-pan-row:last-child { border-bottom: none; }
+
+.inicio-pan-nombre { color: var(--text); }
+
+.inicio-pan-cant {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--cafe-oscuro);
+  min-width: 2rem;
+  text-align: right;
+}
+
+.inicio-may-card {
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--arena);
+}
+
+.inicio-may-card:last-child { border-bottom: none; }
+
+.inicio-may-cliente {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--cafe-oscuro);
+  margin-bottom: 0.15rem;
+}
+
+.inicio-may-panes {
+  font-size: 0.8rem;
+  color: var(--text-light);
+}
+
+.inicio-accesos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.inicio-acceso {
+  background: white;
+  border: 2px solid var(--arena);
+  border-radius: 14px;
+  padding: 1.2rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--cafe-oscuro);
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(74,52,32,0.06);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.inicio-acceso:active {
+  transform: scale(0.97);
+  background: var(--crema);
+}
+
+.inicio-acceso-icon { font-size: 1.8rem; line-height: 1; }
+
+/* Dark mode */
+body.dark .inicio-card       { background: #231c14; }
+body.dark .inicio-acceso     { background: #231c14; border-color: var(--arena); color: var(--text); }
+body.dark .inicio-acceso:active { background: #2e2418; }
