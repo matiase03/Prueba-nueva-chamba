@@ -55,15 +55,13 @@ function _bollosPorLote(receta) {
 }
 
 // ── Cálculo de producción del día ─────────────────────────────
-// Devuelve array de { nombre, multiplicador, extra? } para cada
-// receta de doble hidratación.
+// Devuelve array de { nombre, masas, extra? } indicando cuántas
+// MASAS hay que tirar (no panes) de cada receta DH.
 function calcularProduccionDia() {
   const norm = s => s.toLowerCase().trim()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ');
 
-  // Recetas de doble hidratación que NO son ciabatta.
-  // panNames: nombres tal como aparecen en locales-data.
   const RECETAS_DH = [
     { nombre: 'Molde Avena',    panNames: ['Molde Avena']    },
     { nombre: 'Molde Integral', panNames: ['Molde Integral'] },
@@ -78,25 +76,37 @@ function calcularProduccionDia() {
 
   // ── Recetas regulares ──────────────────────────────────────
   const resultados = RECETAS_DH.map(cfg => {
-    // Buscar la receta en el array global para calcular bollos por lote
     const recetaData = (typeof recetas !== 'undefined')
       ? recetas.find(r => norm(r.nombre) === norm(cfg.nombre))
       : null;
-    const bollosPorLote = recetaData ? (_bollosPorLote(recetaData) || 2) : 2;
 
-    let total = 0;
+    // Calcular gramos por amasada sumando todos los ingredientes en "g"
+    let grPorMasa = 0;
+    if (recetaData) {
+      ['hidratacion1', 'hidratacion2'].forEach(fase => {
+        (recetaData[fase]?.ingredientes || []).forEach(ing => {
+          if ((ing.unidad || '').toLowerCase() === 'g') grPorMasa += (ing.cantidad || 0);
+        });
+      });
+    }
+    if (!grPorMasa) grPorMasa = 2000; // fallback
 
-    // Sumar de locales
+    const pesoBollo = recetaData ? _parsePesoBollos(recetaData.pesoBollos) : 750;
+    if (!pesoBollo) return { nombre: cfg.nombre, masas: 0 };
+
+    let totalPanes = 0;
+
+    // Sumar de locales fijos
     locales.forEach(local => {
       local.panes.forEach(p => {
         const matchNombre = cfg.panNames.some(n => norm(n) === norm(p.pan));
         if (!matchNombre) return;
         const num = parseFloat(p.cantidad);
-        if (!isNaN(num)) total += num;
+        if (!isNaN(num)) totalPanes += num;
       });
     });
 
-    // Sumar de mayoristas activos (con matching flexible)
+    // Sumar de mayoristas activos
     activos.forEach(order => {
       order.panes.forEach(p => {
         const matchNombre = cfg.panNames.some(n => {
@@ -105,22 +115,28 @@ function calcularProduccionDia() {
         });
         if (!matchNombre) return;
         const num = parseFloat(p.cantidad);
-        if (!isNaN(num) && num > 0) total += num;
+        if (!isNaN(num) && num > 0) totalPanes += num;
       });
     });
 
-    const multiplicador = Math.ceil(total / bollosPorLote);
-    return { nombre: cfg.nombre, multiplicador, bollosPorLote };
+    if (totalPanes === 0) return { nombre: cfg.nombre, masas: 0 };
+
+    // Masas necesarias = ceil(gramos necesarios / gramos por masa)
+    const grNecesarios = totalPanes * pesoBollo;
+    const masas = Math.ceil(grNecesarios / grPorMasa);
+    return { nombre: cfg.nombre, masas };
   });
 
   // ── Ciabatta (regla especial) ──────────────────────────────
-  // Base siempre ×5. Las adiciones vienen SOLO de mayoristas:
-  //   - Ciabatta larga / Focaccia / Focaccia entera → cada unidad suma ×1
-  //   - Ciabatta corta / Ciabatta chica              → cada 8 suman ×1 (ceil)
-  let ciabattaMult  = 5;
+  // Base fija: ×5
+  // Cada mayorista con ciabatta agrega:
+  //   - Ciabatta larga, focaccia, focaccia entera, focaccia larga → +1 por unidad (mínimo +1 aunque sea 1)
+  //   - Ciabatta corta / chica → cada 8 suman +1 (ceil), mínimo +1 si hay al menos 1
+  // La primera unidad de cualquier tipo ya sube a ×6 (base 5 + 1 mínimo)
+  let ciabattaMasas = 5;
   const ciabExtras  = [];
 
-  const POR_UNIDAD = ['ciabatta larga', 'focaccia', 'focaccia entera', 'focaccia larga'];
+  const POR_UNIDAD = ['ciabatta larga', 'focaccia entera', 'focaccia larga', 'focaccia'];
   const POR_OCHO   = ['ciabatta corta', 'ciabatta chica'];
 
   activos.forEach(order => {
@@ -130,11 +146,13 @@ function calcularProduccionDia() {
       if (num <= 0) return;
 
       if (POR_UNIDAD.some(n => pn.includes(n) || n.includes(pn))) {
-        ciabattaMult += num;
+        // Cada unidad suma +1 (si es 1, sube de ×5 a ×6; si son 2, sube a ×7, etc.)
+        ciabattaMasas += num;
         ciabExtras.push(`${num} ${p.pan}`);
       } else if (POR_OCHO.some(n => pn.includes(n) || n.includes(pn))) {
-        const extra = Math.ceil(num / 8);
-        ciabattaMult += extra;
+        // Mínimo +1 aunque sea 1 sola ciabatta corta
+        const extra = Math.max(1, Math.ceil(num / 8));
+        ciabattaMasas += extra;
         ciabExtras.push(`${num} ${p.pan}`);
       }
     });
@@ -142,11 +160,12 @@ function calcularProduccionDia() {
 
   resultados.push({
     nombre: 'Ciabatta',
-    multiplicador: ciabattaMult,
+    masas: ciabattaMasas,
     extra: ciabExtras.length ? ciabExtras : null,
   });
 
-  return resultados;
+  // Filtrar los que dan 0 masas (no hay pedidos)
+  return resultados.filter(r => r.masas > 0);
 }
 
 // ── Pantalla de inicio ──
@@ -161,11 +180,11 @@ function renderInicio() {
   const produccion = calcularProduccionDia();
   const activos    = (typeof mayoristasActivos === 'function') ? mayoristasActivos() : [];
 
-  const prodHTML = produccion.map(({ nombre, multiplicador, extra }) => `
+  const prodHTML = produccion.map(({ nombre, masas, extra }) => `
     <div class="inicio-pan-row">
       <span class="inicio-pan-nombre">${nombre}</span>
       <div style="text-align:right">
-        <span class="inicio-pan-cant">×${multiplicador}</span>
+        <span class="inicio-pan-cant">×${masas}</span>
         ${extra ? `<div style="font-size:0.72rem;color:var(--hidra1);margin-top:1px">+may: ${extra.join(', ')}</div>` : ''}
       </div>
     </div>`).join('');
@@ -186,7 +205,7 @@ function renderInicio() {
 
       <div class="inicio-card">
         <div class="inicio-card-title">
-          🔥 Masas a hacer hoy
+          🔥 Masas a tirar hoy
           ${activos.length ? '<small style="font-family:DM Sans,sans-serif;font-size:0.72rem;font-weight:400;color:var(--hidra1)">(incluye mayoristas)</small>' : ''}
         </div>
         ${prodHTML}
