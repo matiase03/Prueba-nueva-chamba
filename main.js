@@ -315,7 +315,7 @@ function renderInicio() {
   });
 
   // Filas de producción
-  const prodHTML = prodReal.map(({ nombre, masas, masasReales, stockPanes, extra }) => {
+  const prodHTML = prodReal.map(({ nombre, masas, masasReales, stockPanes, panesPendientes, extra }) => {
     const tieneStock = stockPanes > 0;
     const completo   = masasReales === 0;
     return `
