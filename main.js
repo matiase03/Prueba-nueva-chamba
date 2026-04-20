@@ -249,6 +249,22 @@ function renderInicio() {
   const el = document.getElementById('tab-inicio');
   if (!el) return;
 
+  try {
+    _renderInicioInterno(el);
+  } catch(e) {
+    console.error('renderInicio error:', e);
+    el.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--text-light)">
+      <div style="font-size:2rem;margin-bottom:1rem">🍞</div>
+      <div style="font-family:'Playfair Display',serif;font-size:1.1rem">Cargando...</div>
+    </div>`;
+    // Reintentar en 500ms por si los datos aún no cargaron
+    setTimeout(() => {
+      try { _renderInicioInterno(el); } catch(e2) { console.error('renderInicio retry error:', e2); }
+    }, 500);
+  }
+}
+
+function _renderInicioInterno(el) {
   const hoy    = new Date();
   const diaFmt = hoy.toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' });
   const diaStr = diaFmt.charAt(0).toUpperCase() + diaFmt.slice(1);
@@ -422,7 +438,7 @@ function renderInicio() {
     </div>`;
 
   // Abrir panel si hay stock cargado — ya lo maneja el style en el innerHTML
-}
+}  // fin _renderInicioInterno
 
 function toggleStockPanel() {
   const panel   = document.getElementById('stock-panel');
