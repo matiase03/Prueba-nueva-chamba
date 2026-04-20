@@ -274,16 +274,44 @@ function renderInicio() {
     }
     if (!grPorMasa) grPorMasa = 2000;
 
-    const pesoBollo   = recetaData ? _parsePesoBollos(recetaData.pesoBollos) : 750;
-    const stockPanes  = getStockPan(item.nombre);
-    const stockGramos = stockPanes * (pesoBollo || 750);
+    const pesoBollo  = recetaData ? _parsePesoBollos(recetaData.pesoBollos) : 750;
+    const stockPanes = getStockPan(item.nombre);
 
-    // Gramos necesarios totales = masas × grPorMasa
-    const grNecesarios = item.masas * grPorMasa;
-    const grRestantes  = Math.max(0, grNecesarios - stockGramos);
-    const masasReales  = grRestantes > 0 ? Math.ceil(grRestantes / grPorMasa) : 0;
+    // Calcular cuántos panes totales necesita el día
+    // item.masas = ceil(panesNecesarios * pesoBollo / grPorMasa)
+    // Recuperamos panesNecesarios aproximados para mostrar info, pero
+    // el cálculo correcto es: panes pendientes = panes necesarios - stock
+    // panes necesarios = item.masas * (grPorMasa / pesoBollo) → estimación
+    // Más simple y exacto: recalcular desde los locales
+    let panesNecesarios = 0;
+    const activos2 = (typeof mayoristasActivos === 'function') ? mayoristasActivos() : [];
+    const norm2 = s => s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
+    locales.forEach(local => {
+      local.panes.forEach(p => {
+        if (norm2(p.pan) === norm2(item.nombre)) {
+          const n = parseFloat(p.cantidad);
+          if (!isNaN(n)) panesNecesarios += n;
+        }
+      });
+    });
+    activos2.forEach(order => {
+      order.panes.forEach(p => {
+        if (norm2(p.pan) === norm2(item.nombre) || norm2(p.pan).includes(norm2(item.nombre)) || norm2(item.nombre).includes(norm2(p.pan))) {
+          const n = parseFloat(p.cantidad);
+          if (!isNaN(n) && n > 0) panesNecesarios += n;
+        }
+      });
+    });
 
-    return { ...item, stockPanes, masasReales, grPorMasa, pesoBollo };
+    // Panes pendientes después de descontar stock
+    const panesPendientes = Math.max(0, panesNecesarios - stockPanes);
+
+    // Masas reales necesarias para los panes pendientes
+    const masasReales = panesPendientes > 0 && pesoBollo
+      ? Math.ceil((panesPendientes * pesoBollo) / grPorMasa)
+      : 0;
+
+    return { ...item, stockPanes, masasReales, panesNecesarios, panesPendientes };
   });
 
   // Filas de producción
@@ -296,7 +324,7 @@ function renderInicio() {
       <div style="text-align:right">
         ${tieneStock && !completo ? `
           <span class="inicio-pan-cant">×${masasReales}</span>
-          <div style="font-size:0.72rem;color:var(--text-light);margin-top:1px">de ×${masas} · stock: ${stockPanes} panes</div>
+          <div style="font-size:0.72rem;color:var(--text-light);margin-top:1px">de ×${masas} · stock: ${stockPanes} panes · faltan: ${panesPendientes}</div>
         ` : completo ? `
           <span style="font-size:0.82rem;color:var(--hidra1);font-weight:600">✓ cubierto</span>
           <div style="font-size:0.72rem;color:var(--text-light);margin-top:1px">stock: ${stockPanes} panes</div>

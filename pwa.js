@@ -1,7 +1,7 @@
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('/Recetario-chamba/sw.js')
+      .register('/Prueba-nueva-chamba/sw.js')
       .then(reg => {
         console.log('SW registrado:', reg.scope);
       })
@@ -11,7 +11,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// Capturar el evento de instalación para mostrarlo cuando el usuario quiera
 let deferredPrompt = null;
 
 window.addEventListener('beforeinstallprompt', e => {
@@ -21,9 +20,7 @@ window.addEventListener('beforeinstallprompt', e => {
 });
 
 function mostrarBotonInstalar() {
-  // Si ya existe el botón, no lo duplicamos
   if (document.getElementById('install-btn')) return;
-
   const btn = document.createElement('button');
   btn.id = 'install-btn';
   btn.textContent = '📲 Instalar app';
@@ -44,17 +41,13 @@ function mostrarBotonInstalar() {
     z-index: 9999;
     transition: opacity 0.3s;
   `;
-
   btn.addEventListener('click', async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      btn.remove();
-    }
+    if (outcome === 'accepted') btn.remove();
     deferredPrompt = null;
   });
-
   document.body.appendChild(btn);
 }
 
