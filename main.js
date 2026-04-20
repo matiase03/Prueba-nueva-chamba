@@ -109,10 +109,7 @@ function calcularProduccionDia() {
     // Sumar de mayoristas activos
     activos.forEach(order => {
       order.panes.forEach(p => {
-        const matchNombre = cfg.panNames.some(n => {
-          const np = norm(p.pan), nn = norm(n);
-          return np === nn || np.includes(nn) || nn.includes(np);
-        });
+        const matchNombre = cfg.panNames.some(n => norm(n) === norm(p.pan));
         if (!matchNombre) return;
         const num = parseFloat(p.cantidad);
         if (!isNaN(num) && num > 0) totalPanes += num;
@@ -302,9 +299,11 @@ function _renderInicioInterno(el) {
     let panesNecesarios = 0;
     const activos2 = (typeof mayoristasActivos === 'function') ? mayoristasActivos() : [];
     const norm2 = s => s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
+    const nombreNorm = norm2(item.nombre);
     locales.forEach(local => {
       local.panes.forEach(p => {
-        if (norm2(p.pan) === norm2(item.nombre)) {
+        // Matching EXACTO para evitar que "Integral" matchee "Molde Integral"
+        if (norm2(p.pan) === nombreNorm) {
           const n = parseFloat(p.cantidad);
           if (!isNaN(n)) panesNecesarios += n;
         }
@@ -312,7 +311,8 @@ function _renderInicioInterno(el) {
     });
     activos2.forEach(order => {
       order.panes.forEach(p => {
-        if (norm2(p.pan) === norm2(item.nombre) || norm2(p.pan).includes(norm2(item.nombre)) || norm2(item.nombre).includes(norm2(p.pan))) {
+        // Matching exacto también para mayoristas
+        if (norm2(p.pan) === nombreNorm) {
           const n = parseFloat(p.cantidad);
           if (!isNaN(n) && n > 0) panesNecesarios += n;
         }
@@ -322,9 +322,9 @@ function _renderInicioInterno(el) {
     // Panes pendientes después de descontar stock
     const panesPendientes = Math.max(0, panesNecesarios - stockPanes);
 
-    // Masas reales necesarias para los panes pendientes
-    const masasReales = panesPendientes > 0 && pesoBollo
-      ? Math.ceil((panesPendientes * pesoBollo) / grPorMasa)
+    // Masas reales — siempre redondear para ARRIBA para no quedarse corto
+    const masasReales = (panesPendientes > 0 && pesoBollo && grPorMasa)
+      ? Math.ceil(panesPendientes * pesoBollo / grPorMasa)
       : 0;
 
     return { ...item, stockPanes, masasReales, panesNecesarios, panesPendientes };
