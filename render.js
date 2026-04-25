@@ -1,4 +1,4 @@
-// ── Funciones de dibujado de Recetas ──
+// --- FUNCIONES DE RENDERIZADO ---
 
 function fmt(n) {
   if (n === 0) return "0";
@@ -6,10 +6,6 @@ function fmt(n) {
   return r % 1 === 0 ? r.toString() : r.toFixed(1);
 }
 
-/**
- * Dibuja un ingrediente. 
- * Se le agrega onclick para la función de Mise en Place.
- */
 function ingCard(ing, mult) {
   const qty = fmt(ing.cantidad * mult);
   return `
@@ -19,15 +15,8 @@ function ingCard(ing, mult) {
     </div>`;
 }
 
-/**
- * Dibuja la lista de pasos.
- * Se le agrega onclick para que el aprendiz pueda tachar pasos completados.
- */
 function stepsHTML(pasos) {
-  return `
-    <ol class="steps-list">
-      ${pasos.map(p => `<li onclick="this.classList.toggle('step-done')">${p}</li>`).join('')}
-    </ol>`;
+  return `<ol class="steps-list">${pasos.map(p => `<li onclick="this.classList.toggle('step-done')">${p}</li>`).join('')}</ol>`;
 }
 
 function coccionHTML(r, mult) {
@@ -76,6 +65,7 @@ function renderSimple(r, mult) {
 function renderDoble(r, mult) {
   return `
     <div class="recipe-body">
+
       <div class="hidra-block hidra-1">
         <div class="hidra-block-header">
           <div class="numero">1</div>
@@ -110,7 +100,7 @@ function renderDoble(r, mult) {
         </div>
       </div>` : `
       <div class="nota" style="background:rgba(58,90,122,0.08);border-color:rgba(58,90,122,0.25);">
-        <strong style="color:var(--hidra2);">💧 Segunda hidratación:</strong> Pendiente de carga.
+        <strong style="color:var(--hidra2);">💧 Segunda hidratación:</strong> Pendiente.
       </div>`}
 
       ${r.nota ? `<div class="nota${r.nota.includes('⚠️') ? ' disclaimer' : ''}"><strong>${r.nota.includes('⚠️') ? '⚠️ Atención' : '💡 Tip'}:</strong> ${r.nota.replace(/⚠️\s*/g,'')}</div>` : ''}
@@ -118,7 +108,7 @@ function renderDoble(r, mult) {
     </div>`;
 }
 
-// ── Notas personales ──
+// --- NOTAS ---
 function getNotasRecetas() {
   try { return JSON.parse(localStorage.getItem('notas_recetas') || '{}'); } catch { return {}; }
 }
@@ -137,32 +127,27 @@ function notaPersonalHTML(nombreReceta) {
     <div class="personal-note-section">
       <div class="personal-note-label">📝 Mis notas</div>
       <textarea class="personal-note-input"
-        placeholder="Anotá variaciones, observaciones..."
+        placeholder="Anotá variaciones..."
         onblur="guardarNota('${key}', this.value)">${nota}</textarea>
     </div>`;
 }
 
-// ── Render principal ──
+// --- RENDER PRINCIPAL ---
 function render() {
   const sel  = document.getElementById('recipeSelect');
   if (!sel) return;
   const idx  = sel.value;
   const mult = parseFloat(document.getElementById('multiplier').value) || 1;
-  
-  const multDisplay = document.getElementById('multNum');
-  if (multDisplay) multDisplay.textContent = `×${fmt(mult)}`;
+  const multDisp = document.getElementById('multNum');
+  if (multDisp) multDisp.textContent = `×${fmt(mult)}`;
 
   const output = document.getElementById('output');
   if (!output) return;
 
   if (idx === '') {
-    output.innerHTML = `
-      <div class="empty-state">
-        <div class="icon">🥐</div>
-        <p>Elegí una receta para empezar</p>
-      </div>`;
-    const bollosRow = document.getElementById('bollos-row');
-    if (bollosRow) bollosRow.style.display = 'none';
+    output.innerHTML = `<div class="empty-state"><div class="icon">🥐</div><p>Elegí una receta para empezar</p></div>`;
+    const bRow = document.getElementById('bollos-row');
+    if (bRow) bRow.style.display = 'none';
     return;
   }
 
