@@ -1,14 +1,33 @@
+// ── Funciones de dibujado de Recetas ──
+
+function fmt(n) {
+  if (n === 0) return "0";
+  const r = Math.round(n * 10) / 10;
+  return r % 1 === 0 ? r.toString() : r.toFixed(1);
+}
+
+/**
+ * Dibuja un ingrediente. 
+ * Se le agrega onclick para la función de Mise en Place.
+ */
 function ingCard(ing, mult) {
   const qty = fmt(ing.cantidad * mult);
   return `
-    <div class="ingredient-item">
+    <div class="ingredient-item" onclick="this.classList.toggle('checked')">
       <div class="ingredient-qty">${qty}<span class="unit">${ing.unidad}</span></div>
       <div class="ingredient-name">${ing.nombre}</div>
     </div>`;
 }
 
+/**
+ * Dibuja la lista de pasos.
+ * Se le agrega onclick para que el aprendiz pueda tachar pasos completados.
+ */
 function stepsHTML(pasos) {
-  return `<ol class="steps-list">${pasos.map(p => `<li>${p}</li>`).join('')}</ol>`;
+  return `
+    <ol class="steps-list">
+      ${pasos.map(p => `<li onclick="this.classList.toggle('step-done')">${p}</li>`).join('')}
+    </ol>`;
 }
 
 function coccionHTML(r, mult) {
@@ -57,7 +76,6 @@ function renderSimple(r, mult) {
 function renderDoble(r, mult) {
   return `
     <div class="recipe-body">
-
       <div class="hidra-block hidra-1">
         <div class="hidra-block-header">
           <div class="numero">1</div>
@@ -92,7 +110,7 @@ function renderDoble(r, mult) {
         </div>
       </div>` : `
       <div class="nota" style="background:rgba(58,90,122,0.08);border-color:rgba(58,90,122,0.25);">
-        <strong style="color:var(--hidra2);">💧 Segunda hidratación:</strong> Próximamente — los pasos e ingredientes de esta etapa se van a agregar pronto.
+        <strong style="color:var(--hidra2);">💧 Segunda hidratación:</strong> Pendiente de carga.
       </div>`}
 
       ${r.nota ? `<div class="nota${r.nota.includes('⚠️') ? ' disclaimer' : ''}"><strong>${r.nota.includes('⚠️') ? '⚠️ Atención' : '💡 Tip'}:</strong> ${r.nota.replace(/⚠️\s*/g,'')}</div>` : ''}
@@ -119,7 +137,7 @@ function notaPersonalHTML(nombreReceta) {
     <div class="personal-note-section">
       <div class="personal-note-label">📝 Mis notas</div>
       <textarea class="personal-note-input"
-        placeholder="Anotá variaciones, observaciones, trucos..."
+        placeholder="Anotá variaciones, observaciones..."
         onblur="guardarNota('${key}', this.value)">${nota}</textarea>
     </div>`;
 }
@@ -127,41 +145,46 @@ function notaPersonalHTML(nombreReceta) {
 // ── Render principal ──
 function render() {
   const sel  = document.getElementById('recipeSelect');
+  if (!sel) return;
   const idx  = sel.value;
   const mult = parseFloat(document.getElementById('multiplier').value) || 1;
-  document.getElementById('multNum').textContent = `×${fmt(mult)}`;
+  
+  const multDisplay = document.getElementById('multNum');
+  if (multDisplay) multDisplay.textContent = `×${fmt(mult)}`;
+
+  const output = document.getElementById('output');
+  if (!output) return;
 
   if (idx === '') {
-    document.getElementById('output').innerHTML = `
+    output.innerHTML = `
       <div class="empty-state">
         <div class="icon">🥐</div>
         <p>Elegí una receta para empezar</p>
       </div>`;
-    document.getElementById('bollos-row').style.display = 'none';
+    const bollosRow = document.getElementById('bollos-row');
+    if (bollosRow) bollosRow.style.display = 'none';
     return;
   }
 
-  const r      = recetas[idx];
+  const r = recetas[idx];
   const multBadge = mult !== 1 ? `<div class="badge-mult">×${fmt(mult)}</div>` : '';
   const cuerpo = r.dobleHidratacion ? renderDoble(r, mult) : renderSimple(r, mult);
 
-  document.getElementById('output').innerHTML = `
+  output.innerHTML = `
     <div class="recipe-card">
       <div class="recipe-header">
         ${multBadge}
         <h2>${r.nombre}</h2>
         <div class="meta">
-          <span class="meta-item">🕒 ${r.tiempo}</span>
+          <span class="meta-item">🕒 ${r.tiempo || '--'}</span>
           ${r.pesoBollos      ? `<span class="meta-item">⚖️ ${r.pesoBollos}</span>` : ''}
           ${r.rendimientoKilo ? `<span class="meta-item">📊 ${r.rendimientoKilo}</span>` : ''}
           ${r.dobleHidratacion ? '<span class="meta-item">💧 Doble hidratación</span>' : ''}
         </div>
-        <button class="print-btn" onclick="window.print()" title="Imprimir receta">🖨 Imprimir</button>
       </div>
       ${cuerpo}
     </div>
     ${notaPersonalHTML(r.nombre)}`;
 
-  // Actualizar calculadora de bollos
   if (typeof actualizarHintBollos === 'function') actualizarHintBollos(r, mult);
 }
